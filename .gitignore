@@ -1,0 +1,55 @@
+########################################
+# OS / Editor
+########################################
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+########################################
+# Secrets / Local env
+########################################
+.env
+.env.*
+!.env.example
+
+########################################
+# Go
+########################################
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test / coverage
+*.test
+*.out
+*.cover
+coverage/
+cover/
+*.prof
+
+# Build output (프로젝트에 맞게 사용)
+bin/
+dist/
+
+# Go workspace cache
+.gopath/
+# (Go modules 기본은 vendor 미사용. vendor 안 쓸 거면 유지)
+vendor/
+
+########################################
+# Rust
+########################################
+# Cargo build dir
+target/
+
+# Rust backup files
+**/*.rs.bk
+
+# Cargo output (선택)
+Cargo.lock.orig
