@@ -1,0 +1,20 @@
+---
+- name: Install Apache on Ubuntu
+  hosts: TEST
+  become: true
+
+  tasks:
+    - name: Install apache2
+      ansible.builtin.apt:
+        name: apache2
+        state: latest
+        update_cache: yes
+
+    - name: Enable and start apache2
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: yes
+
+
+# ansible-playbook -i inventory.ini apache.yml
