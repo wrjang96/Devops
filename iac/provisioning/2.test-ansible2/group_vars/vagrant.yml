@@ -1,0 +1,6 @@
+apache_document_root: /vagrant/src/public
+apache_server_name: laravel.dev
+
+deploy_laravel_root: /vagrant/src
+deploy_laravel_env: local
+deploy_laravel_debug: true

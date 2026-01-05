@@ -1,0 +1,13 @@
+<VirtualHost *:80>
+    ServerName {{ apache_server_name }}
+    DocumentRoot {{ apache_document_root }}
+
+    <Directory {{ apache_document_root }}>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/laravel_error.log
+    CustomLog ${APACHE_LOG_DIR}/laravel_access.log combined
+</VirtualHost>

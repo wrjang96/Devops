@@ -53,3 +53,34 @@ target/
 
 # Cargo output (선택)
 Cargo.lock.orig
+
+# macOS
+.DS_Store
+
+# Vagrant / VirtualBox
+.vagrant/
+vagrant_ssh_config
+*.box
+
+# Ansible (generated / local)
+inventory.ini
+*.retry
+*.log
+
+# Ansible secrets (if you ever add them)
+.vault_pass
+*.vault
+group_vars/**/vault.yml
+host_vars/**/vault.yml
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+
+# Editor
+.vscode/
+.idea/

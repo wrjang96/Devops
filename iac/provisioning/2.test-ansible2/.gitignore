@@ -1,0 +1,94 @@
+########################################
+# OS / IDE
+########################################
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+########################################
+# Ansible (로컬 실행 흔적)
+########################################
+*.retry
+.ansible/
+ansible.log
+
+########################################
+# Vagrant / VirtualBox artifacts
+########################################
+.vagrant/
+.vagrant.d/
+*.box
+*.log
+
+########################################
+# Local inventory / host config (민감 가능)
+# - hosts 파일에는 IP, 로컬 key 경로가 들어가므로 보통 커밋하지 않습니다.
+########################################
+hosts
+inventory.ini
+hosts.ini
+
+########################################
+# Secrets / Keys (절대 커밋 금지)
+########################################
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*id_rsa*
+**/*id_ed25519*
+**/.ssh/
+**/*.kdbx
+
+########################################
+# Ansible vars 중 "비밀번호 들어가기 쉬운" 것들
+# - db.yml에 db_password를 넣는 구조면 이 파일은 커밋하지 않는 편이 안전합니다.
+# - 대신 db.yml.example을 만들어 커밋하세요.
+########################################
+group_vars/db.yml
+host_vars/*.yml
+group_vars/*vault*.yml
+host_vars/*vault*.yml
+group_vars/*secret*.yml
+host_vars/*secret*.yml
+
+########################################
+# Laravel app (src) - 민감/생성물
+# - Laravel 기본 .gitignore가 있어도, 상위에서 한번 더 막아두면 안전합니다.
+########################################
+src/.env
+src/.env.*
+!src/.env.example
+
+# Composer / Node build artifacts
+src/vendor/
+src/node_modules/
+src/public/build/
+src/public/hot
+src/public/storage
+
+# Runtime/cache/logs
+src/storage/logs/
+src/storage/framework/
+src/bootstrap/cache/*.php
+!src/bootstrap/cache/.gitignore
+!src/storage/.gitignore
+!src/storage/**/.gitignore
+
+# Test / tool caches
+src/.phpunit.result.cache
+src/.php-cs-fixer.cache
+src/.php-cs-fixer.dist.php
+src/npm-debug.log*
+src/yarn-debug.log*
+src/yarn-error.log*
+src/pnpm-debug.log*
+
+########################################
+# Docker env (있다면)
+########################################
+docker/**/.env
+docker/**/.env.*

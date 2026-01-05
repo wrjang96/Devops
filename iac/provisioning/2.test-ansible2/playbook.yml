@@ -1,0 +1,258 @@
+---
+- hosts: vagrant
+  become: true
+  gather_facts: true
+
+  vars:
+    base_locale: "ko_KR.UTF-8"
+    base_timezone: "Asia/Seoul"
+    ansible_remote_tmp: "/tmp/.ansible-${USER}"
+
+  pre_tasks:
+    - name: deploy 변수 기본값 세팅
+      ansible.builtin.set_fact:
+        deploy_laravel_root: "{{ deploy_laravel_root | default('/var/www/laravel') }}"
+        deploy_laravel_debug: "{{ (deploy_laravel_debug | default(true)) | bool }}"
+
+    - name: db_host 보정 (inventory에서 null이면 localhost로)
+      ansible.builtin.set_fact:
+        db_host_effective: "{{ '127.0.0.1' if (db_host is not defined or (db_host|string) in ['null','None','']) else db_host }}"
+
+  tasks:
+    - name: APT cache update
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: 기본 패키지 설치
+      ansible.builtin.apt:
+        name:
+          - vim
+          - git
+          - curl
+          - locales
+          - chrony
+          - unzip
+          - ca-certificates
+          - python3-psycopg2
+          - acl
+        state: present
+
+    - name: 로케일 생성
+      ansible.builtin.command: "locale-gen {{ base_locale }}"
+      changed_when: false
+
+    - name: 로케일 설정
+      ansible.builtin.command: "update-locale LANG={{ base_locale }}"
+      changed_when: false
+
+    - name: 타임존 설정
+      ansible.builtin.command: "timedatectl set-timezone {{ base_timezone }}"
+      changed_when: false
+
+    - name: chrony 시작 및 자동시작
+      ansible.builtin.service:
+        name: chrony
+        state: started
+        enabled: yes
+
+    # ===== apache =====
+    - name: Apache 설치
+      ansible.builtin.apt:
+        name: apache2
+        state: present
+      tags: [apache]
+
+    - name: rewrite 모듈 활성화
+      ansible.builtin.command: a2enmod rewrite
+      args:
+        creates: /etc/apache2/mods-enabled/rewrite.load
+      notify: Apache 재시작
+      tags: [apache]
+
+    - name: vhost 템플릿 배포
+      ansible.builtin.template:
+        src: files/apache/laravel.conf.j2
+        dest: /etc/apache2/sites-available/laravel.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Apache 재시작
+      tags: [apache]
+
+    - name: 기본 사이트 비활성화
+      ansible.builtin.command: a2dissite 000-default.conf
+      args:
+        removes: /etc/apache2/sites-enabled/000-default.conf
+      notify: Apache 재시작
+      tags: [apache]
+
+    - name: laravel 사이트 활성화
+      ansible.builtin.command: a2ensite laravel.conf
+      args:
+        creates: /etc/apache2/sites-enabled/laravel.conf
+      notify: Apache 재시작
+      tags: [apache]
+
+    - name: Apache 시작 및 자동시작
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: yes
+      tags: [apache]
+
+    # ===== php =====
+    - name: PHP 패키지 설치
+      ansible.builtin.apt:
+        name:
+          - php
+          - libapache2-mod-php
+          - php-cli
+          - php-pgsql
+          - php-mbstring
+          - php-xml
+          - php-curl
+          - php-zip
+          - php-intl
+          - php-gd
+          - acl
+        state: present
+      notify: Apache 재시작
+      tags: [php]
+
+    - name: 커스텀 php.ini 복사
+      ansible.builtin.copy:
+        src: files/php/zzmyphp.ini
+        dest: /etc/php/8.3/mods-available/zzmyphp.ini
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Apache 재시작
+      tags: [php]
+
+    - name: 커스텀 php.ini 활성화
+      ansible.builtin.command: phpenmod zzmyphp
+      notify: Apache 재시작
+      tags: [php]
+
+    - name: composer 설치
+      ansible.builtin.shell: |
+        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+      args:
+        creates: /usr/local/bin/composer
+      tags: [php]
+
+    # ===== postgresql =====
+    - name: PostgreSQL 설치
+      ansible.builtin.apt:
+        name:
+          - postgresql
+          - postgresql-contrib
+        state: present
+      tags: [postgresql]
+
+    - name: PostgreSQL 시작 및 자동시작
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+        enabled: yes
+      tags: [postgresql]
+
+    - name: PostgreSQL 유저 생성
+      community.postgresql.postgresql_user:
+        name: "{{ db_username }}"
+        password: "{{ db_password }}"
+        role_attr_flags: "CREATEDB,NOSUPERUSER"
+      become_user: postgres
+      tags: [postgresql]
+
+    - name: 애플리케이션 DB 생성
+      community.postgresql.postgresql_db:
+        name: "{{ item }}"
+        owner: "{{ db_username }}"
+        encoding: "UTF-8"
+        template: template0
+      become_user: postgres
+      loop:
+        - "{{ db_database }}"
+        - "{{ db_test_database }}"
+      tags: [postgresql]
+
+    # ===== deploy =====
+    - name: 애플리케이션 코드 배포
+      ansible.builtin.git:
+        repo: "https://github.com/laravel/laravel.git"
+        dest: "{{ deploy_laravel_root }}"
+        accept_hostkey: true
+      tags: [deploy]
+
+    - name: (선택) vendor 제거
+      ansible.builtin.file:
+        path: "{{ deploy_laravel_root }}/vendor"
+        state: absent
+      tags: [deploy]
+
+    - name: .env 템플릿 배포
+      ansible.builtin.template:
+        src: files/deploy/.env.j2
+        dest: "{{ deploy_laravel_root }}/.env"
+        owner: root
+        group: root
+        mode: "0644"
+      tags: [deploy]
+
+    - name: Composer install (no-scripts)
+      ansible.builtin.command:
+        argv: "{{ ['composer','install','--no-interaction','--prefer-dist','--no-scripts'] + ([] if (deploy_laravel_debug | bool) else ['--no-dev']) }}"
+      args:
+        chdir: "{{ deploy_laravel_root }}"
+        creates: "{{ deploy_laravel_root }}/vendor/autoload.php"
+      tags: [deploy]
+
+    - name: storage/bootstrap-cache 권한
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0775"
+        recurse: true
+      loop:
+        - "{{ deploy_laravel_root }}/storage"
+        - "{{ deploy_laravel_root }}/bootstrap/cache"
+      tags: [deploy]
+
+    - name: APP_KEY 생성 
+      ansible.builtin.command:
+        argv: ["php", "artisan", "key:generate", "--force"]
+      args:
+        chdir: "{{ deploy_laravel_root }}"
+      tags: [deploy]
+
+    - name: Laravel package discover
+      ansible.builtin.command:
+        argv: ["php", "artisan", "package:discover", "--ansi"]
+      args:
+        chdir: "{{ deploy_laravel_root }}"
+      tags: [deploy]
+
+    - name: DB migrate (debug only)
+      ansible.builtin.command:
+        argv: ["php", "artisan", "migrate", "--force"]
+      args:
+        chdir: "{{ deploy_laravel_root }}"
+      when: deploy_laravel_debug | bool
+      tags: [deploy]
+
+    - name: Laravel optimize (non-debug)
+      ansible.builtin.command:
+        argv: ["php", "artisan", "optimize"]
+      args:
+        chdir: "{{ deploy_laravel_root }}"
+      when: not (deploy_laravel_debug | bool)
+      tags: [deploy]
+
+  handlers:
+    - name: Apache 재시작
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
