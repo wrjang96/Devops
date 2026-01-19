@@ -1,0 +1,62 @@
+########################################
+# Secrets / Env
+########################################
+.env
+.env.*
+*.key
+*.pem
+
+########################################
+# Go
+########################################
+# binaries
+/server
+/server.exe
+*.exe
+*.out
+*.test
+
+# coverage
+*.cover
+coverage.*
+cover.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE/OS
+.DS_Store
+
+
+########################################
+# Logs
+########################################
+*.log
+
+########################################
+# Node / Vue (Vite)
+########################################
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Vite cache
+.vite/
+
+# npm/yarn/pnpm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+########################################
+# Editor
+########################################
+.vscode/
+.idea/
+*.swp
+
+/server
+/server.exe
