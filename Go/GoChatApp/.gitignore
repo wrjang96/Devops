@@ -44,6 +44,7 @@ dist-ssr/
 
 # Vite cache
 .vite/
+.npm_cache/
 
 # npm/yarn/pnpm logs
 npm-debug.log*

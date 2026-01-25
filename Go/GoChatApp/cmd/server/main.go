@@ -1,52 +1,31 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"io"
+	"go-chat-mem/internal/config"
+	httpx "go-chat-mem/internal/http"
+	"go-chat-mem/internal/rooms"
+	"go-chat-mem/internal/store"
+	"go-chat-mem/internal/users"
+	"go-chat-mem/internal/ws"
 	"log"
-	"net"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	addr := "127.0.0.1:9000"
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatalf("listening on %s", addr)
-	}
-	defer ln.Close()
-	log.Printf("listening on %s", addr)
+	_ = godotenv.Load()
 
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Fatalf("accept error %v", err)
-			continue
-		}
-		go handle(conn)
-	}
-}
+	cfg := config.MustLoad() // config를 로드한다.
+	st := store.New()
 
-func handle(conn net.Conn) {
-	defer conn.Close()
-	remote := conn.RemoteAddr().String()
-	log.Printf("connected: &s", remote)
+	uh := users.Handler{Cfg: cfg, Store: st}
+	rh := rooms.Handler{Store: st}
 
-	r := bufio.NewReader(conn)
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				log.Printf("read error (%s): %v", remote, err)
-			}
-			log.Printf("disconnected: %s", remote)
-			return
-		}
+	hub := ws.NewHub() // 웹소켓허브를생성한다.
+	go hub.Run()
 
-		reply := fmt.Sprintf("echo: %s", line)
-		if _, err := conn.Write([]byte(reply)); err != nil {
-			log.Printf("write error (%s): %v", remote, err)
-			return
-		}
-	}
+	r := httpx.NewRouter(cfg, uh, rh, hub) // 라우터를 생성하는 함수
+
+	log.Println("listening on :" + cfg.Port)
+	_ = r.Run(":" + cfg.Port)
 }
