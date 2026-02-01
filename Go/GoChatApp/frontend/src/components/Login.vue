@@ -2,13 +2,57 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+const mode = ref('login') // 'login' or 'register'
 const username = ref('')
+const password = ref('')
+const errorMsg = ref('')
 const router = useRouter()
 
-const enterLobby = () => {
-  if (username.value.trim()) {
-    localStorage.setItem('chat_username', username.value.trim())
-    router.push('/rooms')
+const toggleMode = () => {
+  mode.value = mode.value === 'login' ? 'register' : 'login'
+  errorMsg.value = ''
+  password.value = ''
+}
+
+const handleSubmit = async () => {
+  errorMsg.value = ''
+  if (!username.value.trim() || !password.value.trim()) {
+    errorMsg.value = 'Please enter both ID and password.'
+    return
+  }
+
+  const endpoint = mode.value === 'login' ? '/login' : '/register'
+  const url = `http://localhost:3434${endpoint}`
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: username.value, password: password.value })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      errorMsg.value = data.error || 'Action failed'
+      return
+    }
+
+    if (mode.value === 'register') {
+      // Auto login or switch to login
+      mode.value = 'login'
+      errorMsg.value = 'Registration successful! Please log in.'
+      password.value = ''
+    } else {
+      // Login successful
+      localStorage.setItem('chat_token', data.accessToken)
+      localStorage.setItem('chat_username', username.value)
+      router.push('/rooms')
+    }
+
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = 'Network error'
   }
 }
 </script>
@@ -17,18 +61,33 @@ const enterLobby = () => {
   <div class="login-container">
     <div class="login-card">
       <h1 class="logo">GOCHAT<span class="red-dot">.</span></h1>
-      <p class="subtitle">Enter the Stadium</p>
+      <p class="subtitle">{{ mode === 'login' ? 'Enter the Stadium' : 'Join the League' }}</p>
       
-      <form @submit.prevent="enterLobby" class="login-form">
+      <form @submit.prevent="handleSubmit" class="login-form">
         <input 
           v-model="username" 
           type="text" 
-          placeholder="Enter your username" 
-          class="username-input"
+          placeholder="ID" 
+          class="input-field"
           autofocus
         />
-        <button type="submit" class="enter-btn">ENTER LOBBY</button>
+        <input 
+          v-model="password" 
+          type="password" 
+          placeholder="Password" 
+          class="input-field"
+        />
+        <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+        
+        <button type="submit" class="enter-btn">
+          {{ mode === 'login' ? 'LOGIN' : 'REGISTER' }}
+        </button>
       </form>
+
+      <div class="toggle-link">
+        <span v-if="mode === 'login'">New player? <a @click="toggleMode">Create account</a></span>
+        <span v-else>Already have a pass? <a @click="toggleMode">Log in</a></span>
+      </div>
     </div>
   </div>
 </template>
@@ -74,7 +133,7 @@ const enterLobby = () => {
   font-size: 0.9rem;
 }
 
-.username-input {
+.input-field {
   width: 100%;
   padding: 1rem;
   font-size: 1.1rem;
@@ -85,7 +144,7 @@ const enterLobby = () => {
   transition: border-color 0.2s;
 }
 
-.username-input:focus {
+.input-field:focus {
   outline: none;
   border-color: var(--primary-blue);
 }
@@ -102,9 +161,28 @@ const enterLobby = () => {
   cursor: pointer;
   transition: background 0.2s;
   text-transform: uppercase;
+  margin-bottom: 1rem;
 }
 
 .enter-btn:hover {
   background: #a00b34;
+}
+
+.error-msg {
+  color: red;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.toggle-link {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.toggle-link a {
+  color: var(--primary-blue);
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
 }
 </style>

@@ -11,7 +11,6 @@ import (
 
 type User struct {
 	ID           string
-	Email        string
 	PasswordHash string
 }
 
@@ -24,32 +23,42 @@ type RefreshTokenRecord struct {
 }
 
 type Room struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	CreatorName string `json:"creatorName"`
+	CreatedBy   string `json:"createdBy"`
+	CreatedAt   string `json:"createdAt"`
+	Members     int    `json:"members"`
+}
+
+type Message struct {
 	ID        string `json:"id"`
-	Name      string `json:"name"`
-	CreatedBy string `json:"createdBy"`
+	RoomID    string `json:"room"`
+	Sender    string `json:"sender"`
+	Content   string `json:"content"`
 	CreatedAt string `json:"createdAt"`
-	Members   int    `json:"members"`
+	Type      string `json:"type"`
 }
 
 type Stores struct {
 	Mu sync.RWMutex
 
-	UsersByEmail map[string]User
-	UsersByID    map[string]User
+	UsersByID map[string]User
 
 	RefreshByHash map[string]RefreshTokenRecord
 
-	Rooms       map[string]Room
-	RoomMembers map[string]map[string]struct{}
+	Rooms        map[string]Room
+	RoomMembers  map[string]map[string]struct{}
+	RoomMessages map[string][]Message
 }
 
 func New() *Stores {
 	return &Stores{
-		UsersByEmail:  map[string]User{},
 		UsersByID:     map[string]User{},
 		RefreshByHash: map[string]RefreshTokenRecord{},
 		Rooms:         map[string]Room{},
 		RoomMembers:   map[string]map[string]struct{}{},
+		RoomMessages:  map[string][]Message{},
 	}
 }
 

@@ -11,7 +11,6 @@ const CtxUserKey = "auth.user"
 
 type AuthedUser struct {
 	UserID string
-	Email  string
 }
 
 func Middleware(jwtSecret string) gin.HandlerFunc {
@@ -27,7 +26,7 @@ func Middleware(jwtSecret string) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid access token"})
 			return
 		}
-		c.Set(CtxUserKey, AuthedUser{UserID: claims.UserID, Email: claims.Email})
+		c.Set(CtxUserKey, AuthedUser{UserID: claims.UserID})
 		c.Next()
 	}
 }

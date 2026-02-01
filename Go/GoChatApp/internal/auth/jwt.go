@@ -8,15 +8,13 @@ import (
 
 type Claims struct {
 	UserID string `json:"uid"`
-	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
-func SignAccessToken(secret, userID, email string, ttl time.Duration) (string, error) {
+func SignAccessToken(secret, userID string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	c := Claims{
 		UserID: userID,
-		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),

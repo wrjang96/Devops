@@ -27,7 +27,7 @@ func NewRouter(cfg config.Config, uh users.Handler, rh rooms.Handler, hub *ws.Hu
 	})
 
 	// public
-	r.POST("/join", uh.Join)
+	r.POST("/register", uh.Register)
 	r.POST("/login", uh.Login)
 	r.POST("/refreshToken", uh.RefreshToken)
 
@@ -48,6 +48,7 @@ func NewRouter(cfg config.Config, uh users.Handler, rh rooms.Handler, hub *ws.Hu
 		p.POST("/chatrooms", rh.Create)
 		p.POST("/chatrooms/:id/join", rh.Join)
 		p.POST("/chatrooms/:id/leave", rh.Leave)
+		p.GET("/chatrooms/:id/messages", rh.GetMessages)
 	}
 	return r
 }

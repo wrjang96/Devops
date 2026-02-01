@@ -6,12 +6,18 @@ const router = useRouter()
 const rooms = ref([])
 const newRoomName = ref('')
 const username = localStorage.getItem('chat_username') || 'Anonymous'
+const token = localStorage.getItem('chat_token')
 
 const fetchRooms = async () => {
     try {
-        const res = await fetch('http://localhost:3434/rooms')
+        // Use rh.List endpoint to get detailed info (creator, member counts)
+        const res = await fetch('http://localhost:3434/chatrooms', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
         if (res.ok) {
             rooms.value = await res.json()
+        } else if (res.status === 401) {
+            router.push('/')
         }
     } catch (e) {
         console.error("Failed to fetch rooms", e)
@@ -19,27 +25,57 @@ const fetchRooms = async () => {
 }
 
 onMounted(() => {
-    if (!localStorage.getItem('chat_username')) {
+    if (!token) {
         router.push('/')
         return
     }
     fetchRooms()
-    setInterval(fetchRooms, 5000)
+    setInterval(fetchRooms, 3000)
 })
 
-const joinRoom = (roomName) => {
-    router.push({ 
-        path: '/chat', 
-        query: { 
-            username: username,
-            room: roomName 
-        } 
-    })
+const joinRoom = async (room) => {
+    try {
+        const res = await fetch(`http://localhost:3434/chatrooms/${room.id}/join`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+            router.push({ 
+                path: '/chat', 
+                query: { 
+                    username: username,
+                    room: room.name,
+                    id: room.id
+                } 
+            })
+        }
+    } catch (e) {
+        console.error("Failed to join", e)
+    }
 }
 
-const createRoom = () => {
-    if (newRoomName.value.trim()) {
-        joinRoom(newRoomName.value.trim())
+const createRoom = async () => {
+    if (!newRoomName.value.trim()) return
+
+    try {
+        const res = await fetch('http://localhost:3434/chatrooms', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ name: newRoomName.value.trim() })
+        })
+        
+        if (res.ok) {
+            const room = await res.json()
+            newRoomName.value = ''
+            await fetchRooms() // Refresh list
+            // Optionally auto-join
+            await joinRoom(room)
+        }
+    } catch (e) {
+        console.error("Failed to create", e)
     }
 }
 </script>
@@ -74,20 +110,22 @@ const createRoom = () => {
                 </div>
                 
                 <div class="rooms-grid">
-                    <div v-for="room in rooms" :key="room.name" class="room-card">
+                    <div v-for="room in rooms" :key="room.id" class="room-card">
                         <div class="room-info">
                             <h3>{{ room.name }}</h3>
+                            <div class="room-meta">
+                                <span class="creator">Host: {{ room.creatorName }}</span>
+                            </div>
                             <div class="room-stat">
-                                <span class="count">{{ room.count }} / 50</span>
-                                <span class="label">Fans</span>
+                                <span class="count">{{ room.members }}</span>
+                                <span class="label">Players</span>
                             </div>
                         </div>
                         <button 
-                            @click="joinRoom(room.name)" 
+                            @click="joinRoom(room)" 
                             class="join-btn"
-                            :disabled="room.count >= 50"
                         >
-                            {{ room.count >= 50 ? 'FULL' : 'JOIN' }}
+                            JOIN
                         </button>
                     </div>
                 </div>
@@ -189,9 +227,16 @@ h1 {
     color: var(--primary-blue);
 }
 
+.room-meta {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
 .room-stat {
     color: #666;
     font-size: 0.9rem;
+    font-weight: bold;
 }
 
 .join-btn {
@@ -204,9 +249,10 @@ h1 {
     font-weight: 600;
 }
 
-.join-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
+.no-rooms {
+    text-align: center;
+    color: #888;
+    margin-top: 2rem;
 }
 
 @media (max-width: 768px) {
