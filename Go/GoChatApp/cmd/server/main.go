@@ -21,7 +21,7 @@ func main() {
 	uh := users.Handler{Cfg: cfg, Store: st}
 	rh := rooms.Handler{Store: st}
 
-	hub := ws.NewHub() // 웹소켓허브를생성한다.
+	hub := ws.NewHub(st) // 웹소켓허브를생성한다.
 	go hub.Run()
 
 	r := httpx.NewRouter(cfg, uh, rh, hub) // 라우터를 생성하는 함수

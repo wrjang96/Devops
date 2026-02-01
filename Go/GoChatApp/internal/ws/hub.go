@@ -2,6 +2,11 @@ package ws
 
 import (
 	"log"
+	"time"
+
+	"go-chat-mem/internal/store"
+
+	"github.com/google/uuid"
 )
 
 type Message struct {
@@ -37,10 +42,13 @@ type Hub struct {
 	stats chan chan []RoomStat
 
 	checkLimit chan LimitCheck
+
+	store *store.Stores
 }
 
-func NewHub() *Hub {
+func NewHub(st *store.Stores) *Hub {
 	return &Hub{
+		store:      st,
 		broadcast:  make(chan Message),
 		register:   make(chan Subscription),
 		unregister: make(chan Subscription),
@@ -85,6 +93,22 @@ func (h *Hub) Run() {
 
 		case message := <-h.broadcast:
 			room := message.Room
+
+			// Save to store
+			h.store.Mu.Lock()
+			if h.store.RoomMessages[room] == nil {
+				h.store.RoomMessages[room] = []store.Message{}
+			}
+			h.store.RoomMessages[room] = append(h.store.RoomMessages[room], store.Message{
+				ID:        uuid.NewString(), // Generate ID
+				RoomID:    room,
+				Sender:    message.Sender,
+				Content:   message.Content,
+				CreatedAt: time.Now().Format(time.RFC3339),
+				Type:      "message",
+			})
+			h.store.Mu.Unlock()
+
 			if clients, ok := h.rooms[room]; ok {
 				for client := range clients {
 					select {

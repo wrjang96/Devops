@@ -12,6 +12,8 @@
 # binaries
 /server
 /server.exe
+/main
+/main.exe
 *.exe
 *.out
 *.test

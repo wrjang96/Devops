@@ -9,7 +9,6 @@ import (
 	"go-chat-mem/internal/store"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,19 +17,19 @@ type Handler struct {
 	Store *store.Stores
 }
 
-type joinReq struct {
-	Email    string `json:"email"`
+type registerReq struct {
+	ID       string `json:"id"`
 	Password string `json:"password"`
 }
 
 type loginReq struct {
-	Email    string `json:"email"`
+	ID       string `json:"id"`
 	Password string `json:"password"`
 }
 
-func (h Handler) Join(c *gin.Context) {
-	var req joinReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Email == "" || req.Password == "" {
+func (h Handler) Register(c *gin.Context) {
+	var req registerReq
+	if err := c.ShouldBindJSON(&req); err != nil || req.ID == "" || req.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
@@ -38,8 +37,8 @@ func (h Handler) Join(c *gin.Context) {
 	h.Store.Mu.Lock()
 	defer h.Store.Mu.Unlock()
 
-	if _, exists := h.Store.UsersByEmail[req.Email]; exists {
-		c.JSON(http.StatusConflict, gin.H{"error": "email already exists"})
+	if _, exists := h.Store.UsersByID[req.ID]; exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "user id already exists"})
 		return
 	}
 
@@ -49,21 +48,20 @@ func (h Handler) Join(c *gin.Context) {
 		return
 	}
 
-	u := store.User{ID: uuid.NewString(), Email: req.Email, PasswordHash: string(hash)}
-	h.Store.UsersByEmail[u.Email] = u
+	u := store.User{ID: req.ID, PasswordHash: string(hash)}
 	h.Store.UsersByID[u.ID] = u
-	c.JSON(http.StatusCreated, gin.H{"id": u.ID, "email": u.Email})
+	c.JSON(http.StatusCreated, gin.H{"id": u.ID})
 }
 
 func (h Handler) Login(c *gin.Context) {
 	var req loginReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Email == "" || req.Password == "" {
+	if err := c.ShouldBindJSON(&req); err != nil || req.ID == "" || req.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
 
 	h.Store.Mu.RLock()
-	u, ok := h.Store.UsersByEmail[req.Email]
+	u, ok := h.Store.UsersByID[req.ID]
 	h.Store.Mu.RUnlock()
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
@@ -75,7 +73,7 @@ func (h Handler) Login(c *gin.Context) {
 		return
 	}
 
-	access, err := auth.SignAccessToken(h.Cfg.JWTSecret, u.ID, u.Email, h.Cfg.AccessTTL)
+	access, err := auth.SignAccessToken(h.Cfg.JWTSecret, u.ID, h.Cfg.AccessTTL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "token error"})
 		return
@@ -132,7 +130,7 @@ func (h Handler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	access, err := auth.SignAccessToken(h.Cfg.JWTSecret, u.ID, u.Email, h.Cfg.AccessTTL)
+	access, err := auth.SignAccessToken(h.Cfg.JWTSecret, u.ID, h.Cfg.AccessTTL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "token error"})
 		return

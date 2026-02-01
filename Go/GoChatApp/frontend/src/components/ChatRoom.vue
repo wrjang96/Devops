@@ -25,6 +25,25 @@ onMounted(() => {
     return
   }
 
+  // Fetch existing messages
+  fetch(`http://localhost:3434/chatrooms/${encodeURIComponent(room)}/messages`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('chat_token')}` }
+  })
+  .then(res => res.json())
+  .then(data => {
+      if (data && data.messages) {
+          messages.value = data.messages.map(m => ({
+              id: m.id || Date.now(),
+              sender: m.sender,
+              content: m.content,
+              room: m.room,
+              type: 'message'
+          }))
+          scrollToBottom()
+      }
+  })
+  .catch(err => console.error("Failed to load history", err))
+
   // Pass room and username in query
   wsService = new WebSocketService(`ws://localhost:3434/ws?room=${encodeURIComponent(room)}&username=${encodeURIComponent(username)}`)
   
@@ -86,7 +105,21 @@ const sendMessage = () => {
   }
 }
 
-const exitRoom = () => {
+const exitRoom = async () => {
+    const roomId = route.query.id
+    const token = localStorage.getItem('chat_token')
+    
+    if (roomId && token) {
+        try {
+            await fetch(`http://localhost:3434/chatrooms/${roomId}/leave`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+        } catch (e) {
+            console.error("Failed to leave", e)
+        }
+    }
+    
     router.push('/rooms')
 }
 

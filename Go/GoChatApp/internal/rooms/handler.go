@@ -43,11 +43,12 @@ func (h Handler) Create(c *gin.Context) {
 	}
 
 	rm := store.Room{
-		ID:        uuid.NewString(),
-		Name:      req.Name,
-		CreatedBy: u.UserID,
-		CreatedAt: time.Now().Format(time.RFC3339),
-		Members:   0,
+		ID:          uuid.NewString(),
+		Name:        req.Name,
+		CreatorName: u.UserID,
+		CreatedBy:   u.UserID,
+		CreatedAt:   time.Now().Format(time.RFC3339),
+		Members:     0,
 	}
 
 	h.Store.Mu.Lock()
@@ -83,7 +84,17 @@ func (h Handler) Join(c *gin.Context) {
 	rm.Members = len(h.Store.RoomMembers[roomID])
 	h.Store.Rooms[roomID] = rm
 
-	c.JSON(http.StatusOK, gin.H{"roomId": roomID, "members": rm.Members})
+	// Get recent messages
+	msgs := h.Store.RoomMessages[roomID]
+
+	outMsgs := make([]store.Message, len(msgs))
+	copy(outMsgs, msgs)
+
+	c.JSON(http.StatusOK, gin.H{
+		"roomId":   roomID,
+		"members":  rm.Members,
+		"messages": outMsgs,
+	})
 }
 
 func (h Handler) Leave(c *gin.Context) {
@@ -95,7 +106,7 @@ func (h Handler) Leave(c *gin.Context) {
 	}
 
 	h.Store.Mu.Lock()
-	defer h.Store.Mu.Unlock() // defer 키워드는 함수가 종료되기 전에 실행되는 코드를 지정하는 데 사용
+	defer h.Store.Mu.Unlock()
 
 	rm, ok := h.Store.Rooms[roomID]
 	if !ok {
@@ -105,8 +116,33 @@ func (h Handler) Leave(c *gin.Context) {
 	if h.Store.RoomMembers[roomID] != nil {
 		delete(h.Store.RoomMembers[roomID], u.UserID)
 	}
-	rm.Members = len(h.Store.RoomMembers[roomID])
+
+	// Check if room is empty
+	remaining := len(h.Store.RoomMembers[roomID])
+	if remaining == 0 {
+		delete(h.Store.Rooms, roomID)
+		delete(h.Store.RoomMembers, roomID)
+		c.JSON(http.StatusOK, gin.H{"roomId": roomID, "members": 0, "status": "deleted"})
+		return
+	}
+
+	rm.Members = remaining
 	h.Store.Rooms[roomID] = rm
 
 	c.JSON(http.StatusOK, gin.H{"roomId": roomID, "members": rm.Members})
+}
+
+func (h Handler) GetMessages(c *gin.Context) {
+	_ = auth.MustGetUser(c)
+	roomID := c.Param("id")
+
+	h.Store.Mu.RLock()
+	defer h.Store.Mu.RUnlock()
+
+	msgs := h.Store.RoomMessages[roomID]
+	if msgs == nil {
+		msgs = []store.Message{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messages": msgs})
 }
