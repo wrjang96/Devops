@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { API_URL } from '../config/api'
 
 const router = useRouter()
 const rooms = ref([])
@@ -11,7 +12,7 @@ const token = localStorage.getItem('chat_token')
 const fetchRooms = async () => {
     try {
         // Use rh.List endpoint to get detailed info (creator, member counts)
-        const res = await fetch('http://localhost:3434/chatrooms', {
+        const res = await fetch(`${API_URL}/chatrooms`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
         if (res.ok) {
@@ -35,7 +36,7 @@ onMounted(() => {
 
 const joinRoom = async (room) => {
     try {
-        const res = await fetch(`http://localhost:3434/chatrooms/${room.id}/join`, {
+        const res = await fetch(`${API_URL}/chatrooms/${room.id}/join`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -58,7 +59,7 @@ const createRoom = async () => {
     if (!newRoomName.value.trim()) return
 
     try {
-        const res = await fetch('http://localhost:3434/chatrooms', {
+        const res = await fetch(`${API_URL}/chatrooms`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
