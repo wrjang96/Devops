@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import WebSocketService from '../services/websocket'
+import { API_URL, WS_URL } from '../config/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,7 +27,7 @@ onMounted(() => {
   }
 
   // Fetch existing messages
-  fetch(`http://localhost:3434/chatrooms/${encodeURIComponent(room)}/messages`, {
+  fetch(`${API_URL}/chatrooms/${encodeURIComponent(room)}/messages`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('chat_token')}` }
   })
   .then(res => res.json())
@@ -45,7 +46,7 @@ onMounted(() => {
   .catch(err => console.error("Failed to load history", err))
 
   // Pass room and username in query
-  wsService = new WebSocketService(`ws://localhost:3434/ws?room=${encodeURIComponent(room)}&username=${encodeURIComponent(username)}`)
+  wsService = new WebSocketService(`${WS_URL}/ws?room=${encodeURIComponent(room)}&username=${encodeURIComponent(username)}`)
   
   wsService.connect(
     () => {
@@ -111,7 +112,7 @@ const exitRoom = async () => {
     
     if (roomId && token) {
         try {
-            await fetch(`http://localhost:3434/chatrooms/${roomId}/leave`, {
+            await fetch(`${API_URL}/chatrooms/${roomId}/leave`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             })

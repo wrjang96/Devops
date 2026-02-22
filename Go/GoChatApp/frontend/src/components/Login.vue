@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { API_URL } from '../config/api'
 
 const mode = ref('login') // 'login' or 'register'
 const username = ref('')
@@ -22,7 +23,7 @@ const handleSubmit = async () => {
   }
 
   const endpoint = mode.value === 'login' ? '/login' : '/register'
-  const url = `http://localhost:3434${endpoint}`
+  const url = `${API_URL}${endpoint}`
 
   try {
     const res = await fetch(url, {
