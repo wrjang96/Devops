@@ -45,7 +45,8 @@ const joinRoom = async (room) => {
                 path: '/chat', 
                 query: { 
                     username: username,
-                    room: room.name,
+                    roomId: room.id,
+                    roomName: room.name,
                     id: room.id
                 } 
             })

@@ -7,7 +7,8 @@ import { API_URL, WS_URL } from '../config/api'
 const route = useRoute()
 const router = useRouter()
 const username = route.query.username
-const room = route.query.room || 'general'
+const roomId = route.query.roomId || route.query.id || route.query.room
+const roomName = route.query.roomName || route.query.room || 'general'
 const messages = ref([])
 const newMessage = ref('')
 const messagesContainer = ref(null)
@@ -21,13 +22,13 @@ const scrollToBottom = async () => {
 }
 
 onMounted(() => {
-  if (!username) {
+  if (!username || !roomId) {
     router.push('/')
     return
   }
 
   // Fetch existing messages
-  fetch(`${API_URL}/chatrooms/${encodeURIComponent(room)}/messages`, {
+  fetch(`${API_URL}/chatrooms/${encodeURIComponent(roomId)}/messages`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('chat_token')}` }
   })
   .then(res => res.json())
@@ -46,7 +47,7 @@ onMounted(() => {
   .catch(err => console.error("Failed to load history", err))
 
   // Pass room and username in query
-  wsService = new WebSocketService(`${WS_URL}/ws?room=${encodeURIComponent(room)}&username=${encodeURIComponent(username)}`)
+  wsService = new WebSocketService(`${WS_URL}/ws?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent(username)}`)
   
   wsService.connect(
     () => {
@@ -135,8 +136,8 @@ const isMe = (sender) => {
       <div class="header-content">
         <div class="left-head">
             <button @click="exitRoom" class="back-btn">← Lobby</button>
-            <h1 class="room-title">{{ room }}</h1>
-        </div>
+        <h1 class="room-title">{{ roomName }}</h1>
+      </div>
         <div class="user-badge">{{ username }}</div>
       </div>
     </header>
