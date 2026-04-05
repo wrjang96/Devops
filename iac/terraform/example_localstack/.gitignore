@@ -1,0 +1,35 @@
+# Terraform state files (보안 민감 데이터 포함)
+*.tfstate
+*.tfstate.*
+
+# Crash log
+crash.log
+
+# Terraform plan file
+*.tfplan
+
+# .terraform 디렉터리 (Terraform 모듈 다운로드 등 작업 디렉터리)
+.terraform/
+
+# Override files (보통 로컬 테스트용)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variable 파일 예시 (민감 정보 포함될 수 있음)
+terraform.tfvars
+terraform.tfvars.json
+
+# macOS에서 생기는 시스템 파일
+.DS_Store
+
+# IDE/Editor 설정 파일들 (선택)
+.vscode/
+.idea/
+*.swp
+*.bak
+
+#lambda
+*.zip
+*.terraform.lock.hcl
