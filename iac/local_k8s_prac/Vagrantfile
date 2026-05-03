@@ -1,0 +1,55 @@
+CLUSTER_NAME = ENV.fetch("CLUSTER_NAME", "lab")
+K8S_VERSION = ENV.fetch("K8S_VERSION", "1.35")
+BOX_NAME = ENV.fetch("BOX_NAME", "bento/ubuntu-24.04")
+PROVIDER = ENV.fetch("PROVIDER", "virtualbox")
+CONTROL_PLANE_IP = ENV.fetch("CONTROL_PLANE_IP", "192.168.56.10")
+WORKER1_IP = ENV.fetch("WORKER1_IP", "192.168.56.11")
+ENABLE_SECOND_WORKER = ENV.fetch("ENABLE_SECOND_WORKER", "false") == "true"
+
+NODES = [
+  { name: "control-plane", hostname: "control-plane", ip: CONTROL_PLANE_IP, role: "control-plane", cpus: 2, memory: 4096 },
+  { name: "worker1", hostname: "worker1", ip: WORKER1_IP, role: "worker", cpus: 2, memory: 3072 }
+]
+
+if ENABLE_SECOND_WORKER
+  NODES << { name: "worker2", hostname: "worker2", ip: "192.168.56.12", role: "worker", cpus: 2, memory: 3072 }
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.box = BOX_NAME
+  config.vm.synced_folder ".", "/vagrant"
+
+  NODES.each do |node|
+    config.vm.define node[:name] do |machine|
+      machine.vm.hostname = node[:hostname]
+      machine.vm.network "private_network", ip: node[:ip]
+
+      machine.vm.provider PROVIDER do |provider|
+        provider.name = "#{CLUSTER_NAME}-#{node[:name]}" if provider.respond_to?(:name=)
+        provider.memory = node[:memory] if provider.respond_to?(:memory=)
+        provider.cpus = node[:cpus] if provider.respond_to?(:cpus=)
+      end
+
+      machine.vm.provision "shell",
+        path: "scripts/common.sh",
+        env: {
+          "K8S_VERSION" => K8S_VERSION
+        }
+
+      if node[:role] == "control-plane"
+        machine.vm.provision "shell",
+          path: "scripts/control-plane.sh",
+          env: {
+            "CONTROL_PLANE_IP" => CONTROL_PLANE_IP,
+            "POD_CIDR" => "192.168.0.0/16"
+          }
+      else
+        machine.vm.provision "shell",
+          path: "scripts/worker.sh",
+          env: {
+            "CONTROL_PLANE_IP" => CONTROL_PLANE_IP
+          }
+      end
+    end
+  end
+end

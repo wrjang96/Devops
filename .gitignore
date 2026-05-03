@@ -62,6 +62,11 @@ Cargo.lock.orig
 vagrant_ssh_config
 *.box
 
+# Local Kubernetes lab generated files
+iac/local_k8s_prac/configs/config
+iac/local_k8s_prac/configs/join.sh
+iac/local_k8s_prac/exercises/CKAD-exercises/
+
 # Ansible (generated / local)
 inventory.ini
 *.retry
@@ -77,6 +82,7 @@ host_vars/**/vault.yml
 .terraform/
 *.tfstate
 *.tfstate.*
+*.terraform.lock.hcl
 crash.log
 *.tfvars
 *.tfvars.json
